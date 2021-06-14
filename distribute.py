@@ -2,13 +2,14 @@
 """
 Easily split and distribute work for a set of
 sample files across the cluster by automatically
-generating appropriate PBS scripts.
+generating appropriate job scheduler scripts 
+(e.g. PBS,SLURM).
 
-Given a template PBS file and a list of sample IDs,
+Given a template file and a list of sample IDs,
 discover and set the parameters (either by user input
 or by parameter file). The script will then split the
 list of sample IDs into a user-specified number of
-subsets and write out one PBS script for each.
+subsets and write out one script for each.
 """
 import argparse
 from itertools import islice
@@ -104,33 +105,34 @@ def input_params(params):
 def handle_program_options():
     """Parses the given options passed in at the command line."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("pbs_template",
-                        help="Path to the templated PBS file. The output PBS"
+    parser.add_argument("job_template",
+                        help="Path to the templated job script. The output"
                         " files will be prefixed with the name of this file"
-                        " up to the first underscore. For example, if the PBS"
+                        " up to the first underscore. For example, if the job"
                         " file is named: process_template.pbs, then the output"
                         " files will be named: process_0.pbs, process_1.pbs,"
-                        " ... . If no underscore is present, then the name of"
-                        " the template file excluding the extension.")
+                        " ..., etc. If no underscore is present, then the name"
+                        " of the template file excluding the extension.")
     
     sid_me = parser.add_mutually_exclusive_group(required=True)
     sid_me.add_argument("-l", "--sample_ids_list_fp",
                         help="Path to the list of sample IDs.")
     sid_me.add_argument("-s", "--split_sample_ids_fps", nargs="+",
-                        help="Paths to split sample ID files generated in a previous run of this program.")
+                        help="Paths to split sample ID files generated in a"
+                             " previous run of this program.")
     
     parser.add_argument("-n", "--partition", type=int, default=10,
-                        help="The number of samples to process in each PBS"
+                        help="The number of samples to process in each job"
                         " script. Defaults to 10. NOTE: Will be ignored"
                         " if -s/--split_sample_ids_fps is specified.")
     parser.add_argument("-p", "--parameters_fp",
                         help="Path to a file containing values for each"
-                        " parameter in the PBS template file. Each pair should"
+                        " parameter in the template file. Each pair should"
                         " occupy a separate line and have the format"
                         " parameter: value (surrounding spaces are ignored).")
     parser.add_argument("-o", "--output_dir", default=".",
                         help="The directory in which to place the output"
-                        " files: subset sample IDs and PBS scripts. Defaults"
+                        " files: subset sample IDs and job scripts. Defaults"
                         " to the current directory.")
     parser.add_argument("--save_params",
                         help="Save the recorded parameter values to this file.")
@@ -143,7 +145,7 @@ def main():
 
     ## Verify all input file paths
     path_errs = []
-    path_errs.append(verify_path(args.pbs_template))
+    path_errs.append(verify_path(args.job_template))
 
     #  Sample IDs list file
     if args.sample_ids_list_fp is not None:
@@ -164,7 +166,7 @@ def main():
 
 
     ## Process template file and retrieve parameter values
-    with open(args.pbs_template) as inf:
+    with open(args.job_template) as inf:
         template = inf.read()
     params = set(re.findall(r'\{(.*?)\}', template))
 
@@ -187,16 +189,17 @@ def main():
         for fp in args.split_sample_ids_fps:
             sample_groups.append([fp])
 
-    ## Output files
-    pbs_prefix = osp.splitext(osp.basename(args.pbs_template))[0].split("_")[0]
+    ## Output files. js = job script
+    js_name, js_ext = osp.splitext(osp.basename(args.job_template))
+    js_prefix = js_name.split("_")[0]
     for i, group in enumerate(sample_groups):
         i += 1
 
         if args.split_sample_ids_fps is not None:
             samples_fp = args.split_sample_ids_fps[i-1]
         else:
-            samples_fp = osp.join(args.output_dir, f"samples_{i}.txt")
-        pbs_fp = osp.join(args.output_dir, f"{pbs_prefix}_{i}.pbs")
+            samples_fp = osp.join(args.output_dir, f"{js_prefix}_samples_{i}.txt")
+        js_fp = osp.join(args.output_dir, f"{js_prefix}_{i}{js_ext}")
 
         # Write the group sample IDs to disk
         if args.split_sample_ids_fps is None:
@@ -204,11 +207,11 @@ def main():
                 sf.write("\n".join(group))
                 sf.write("\n")
 
-        # Write parameterized PBS scripts
-        with open(pbs_fp, "w") as pbsf:
+        # Write parameterized job scripts
+        with open(js_fp, "w") as jsf:
             param_vals["samples_fp"] = samples_fp
             param_vals["job_id"] = str(i)
-            pbsf.write(template.format(**param_vals))
+            jsf.write(template.format(**param_vals))
 
     if args.save_params is not None:
         skip_params = ["samples_fp", "job_id"]
