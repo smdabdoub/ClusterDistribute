@@ -134,6 +134,10 @@ def handle_program_options():
                         help="The directory in which to place the output"
                         " files: subset sample IDs and job scripts. Defaults"
                         " to the current directory.")
+    parser.add_argument("-a", "--append", default="",
+                        help="Append a string to the job files and sample files"
+                             "to differentiate them from a different run of"
+                             "samples. Example: bowtie_1.pbs -> bowtie_X_1.pbs")
     parser.add_argument("--save_params",
                         help="Save the recorded parameter values to this file.")
 
@@ -192,6 +196,8 @@ def main():
     ## Output files. js = job script
     js_name, js_ext = osp.splitext(osp.basename(args.job_template))
     js_prefix = js_name.split("_")[0]
+    js_prefix = f"{js_prefix}_{args.append}"
+
     for i, group in enumerate(sample_groups):
         i += 1
 
