@@ -90,7 +90,7 @@ def input_params(params):
     Given a set of discovered parameters, ask for user-input
     to define each one.
     """
-    print(f"The following {len(params)} parameters were found "
+    print(f"The following {len(params)-2} parameters were found "
            "in the template file.")
     print("Please enter values for each:")
     param_vals = {}
@@ -216,7 +216,7 @@ def main():
         # Write parameterized job scripts
         with open(js_fp, "w") as jsf:
             param_vals["samples_fp"] = samples_fp
-            param_vals["job_id"] = str(i)
+            param_vals["job_id"] = f"{args.append}_{str(i)}"
             jsf.write(template.format(**param_vals))
 
     if args.save_params is not None:
