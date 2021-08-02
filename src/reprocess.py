@@ -24,8 +24,8 @@ def parse_log_files(log_files, fail_str):
     return failed_runs
 
 
-def gather_failed_samples(root, failed_runs, template_prefix, job_folder, job_out_pattern):
-    sample_files = root.glob(f"{template_prefix}*samples*.txt")
+def gather_failed_samples(root, failed_runs, samples_pattern, job_folder, job_out_pattern):
+    sample_files = root.glob(samples_pattern)
     failed_sample_files = sorted([f for f in sample_files if f.stem.split("_")[-1] in failed_runs])
     # all([a == b.stem.split("_")[-1] for a, b in zip(sorted(failed_runs), failed_sample_files)])
     
@@ -57,13 +57,12 @@ def handle_program_options():
     parser.add_argument("fail_string",
                         help="A string to look for in the job logs that"
                              " indicates job failure.")
-    parser.add_argument("template_prefix",
-                        help="The prefix to use when looking for 'samples'"
+    parser.add_argument("samples_pattern",
+                        help="File path pattern to locate sample ID"
                              " files that match the job logs. All the samples"
                              " from the failed jobs will be combined and "
                              " written out to be used with distribute.py."
-                             " Example: 'megahit_F' which will match"
-                             " megahit_F*samples*.txt")
+                             " Example: 'megahit_F_samples*.txt'")
 
     parser.add_argument("-j", "--job_folder", default="",
                         help="Path to the folder containing completed jobs."
@@ -93,7 +92,7 @@ def main():
 
     failed_runs = parse_log_files(root.glob(lp), args.fail_string)
     failed_samples = gather_failed_samples(root, failed_runs, 
-                                           args.template_prefix, 
+                                           args.samples_pattern, 
                                            Path(args.job_folder), 
                                            args.job_out_pattern)
     print(f"Total failed samples: {len(failed_samples)}\n")
