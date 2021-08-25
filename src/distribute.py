@@ -79,8 +79,8 @@ def parse_parameters_file(path, params):
             p, v = [item.strip() for item in line.split(":", maxsplit=1)]
             file_params[p] = v
     
-    missing = params.difference(file_params)
-    if missing.difference({'job_id', 'samples_fp'}):
+    missing = params.difference(set(file_params).union({'job_id', 'samples_fp'}))
+    if missing:
         raise ParametersException(missing)
 
     return file_params
